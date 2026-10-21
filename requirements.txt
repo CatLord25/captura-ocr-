@@ -1,0 +1,8 @@
+# Windows: ejecutar con Python 3.11+ dentro del entorno virtual.
+numpy>=1.24,<3; platform_system == "Windows"
+Pillow>=9.4,<13; platform_system == "Windows"
+opencv-python>=4.8,<5; platform_system == "Windows"
+
+# Raspberry Pi OS: usar los paquetes apt indicados en README.md.
+# Picamera2 y libcamera deben proceder de apt; crear el venv con
+# --system-site-packages. Tkinter, csv, sqlite3 y logging no se instalan por pip.
