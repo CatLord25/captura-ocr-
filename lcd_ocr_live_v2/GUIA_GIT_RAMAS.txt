@@ -1,0 +1,415 @@
+===============================================================================
+ GUÍA DE RAMAS GIT — LCD OCR LIVE v2
+ Repositorio: https://github.com/CatLord25/captura-ocr-.git
+===============================================================================
+
+Esta guía explica exactamente cómo se organizó el trabajo en Git, qué contiene
+cada rama, cómo se integró todo y cómo tienes que hacer si quieres cambiar algo
+sin romper el código base que ya existía.
+
+Resumen en una frase:
+  El código original queda intacto en `main`; todo el proyecto nuevo vive en
+  `lcd_ocr_live_v2/` dentro de la rama de integración y de seis ramas temáticas
+  que se fusionaron en ella con `--no-ff`.
+
+-------------------------------------------------------------------------------
+1. QUÉ SE HIZO Y QUÉ NO SE TOCÓ
+-------------------------------------------------------------------------------
+
+- Repositorio remoto: https://github.com/CatLord25/captura-ocr-.git
+- Rama base: `main`
+- Commit base (v1, sin cambios): ac195cf
+  "Aplicación LCD OCR para balanza y termohigrobarómetro"
+
+No se modificó ni se borró ningún archivo del código base:
+- `config.py`, `main.py`, `core/`, `ui/`, `datasets/`, `data/`, `assets/`,
+  `README.md` y `requirements.txt` de la raíz siguen exactamente igual.
+- `main` NO recibió commits nuevos.
+- Todo lo nuevo está dentro de la carpeta `lcd_ocr_live_v2/` de las ramas
+  nuevas. Es una carpeta paralela y autocontenida: incluye su propio
+  `config.py`, `core/`, `ui/`, `datasets/`, `data/`, `assets/`, `tools/`,
+  `tests/` y `docs/`.
+
+Los `datasets/` se copiaron dentro de `lcd_ocr_live_v2/` para que esa carpeta
+funcione sola (por ejemplo, si clonas solo esa rama). Git guarda los PNG
+idénticos una sola vez en su base de datos, así que no se duplica el peso real
+del repositorio.
+
+-------------------------------------------------------------------------------
+2. MAPA DE RAMAS
+-------------------------------------------------------------------------------
+
+main (ac195cf)  ← código base original, intacto
+  │
+  └── integration/lcd-ocr-live-v2            ← rama paraguas / integración
+        ├── feature/lcd-ocr-live-v2/captura
+        ├── feature/lcd-ocr-live-v2/vision
+        ├── feature/lcd-ocr-live-v2/ocr
+        ├── feature/lcd-ocr-live-v2/tiempo-hud
+        ├── feature/lcd-ocr-live-v2/interfaz
+        └── feature/lcd-ocr-live-v2/calidad
+
+Tabla de contenido:
+
+| Rama                                        | Añade                                                        | Commit   |
+|---------------------------------------------|--------------------------------------------------------------|----------|
+| integration/lcd-ocr-live-v2                 | Estructura base + fusión de las seis ramas + esta guía        | 0f6ce3f  |
+| feature/lcd-ocr-live-v2/captura             | core/camara.py, core/simulador.py                             | de00d46  |
+| feature/lcd-ocr-live-v2/vision              | core/preprocesado.py, segmentacion.py, roi.py, perspectiva.py | 6c0f5cf  |
+| feature/lcd-ocr-live-v2/ocr                 | core/dataset.py, siete_segmentos.py, reconocimiento.py        | 4abbcfd  |
+| feature/lcd-ocr-live-v2/tiempo-hud          | filtro_temporal.py, instrumentos.py, log_lecturas.py, pipeline.py, hud.py, monitor.py | 39d4bd2 |
+| feature/lcd-ocr-live-v2/interfaz            | ui/ (6 pestañas), main.py, main_live_hud.py                   | 7287cd9  |
+| feature/lcd-ocr-live-v2/calidad             | tools/verificar_instalacion.py, tests/, README.md, docs/      | 8b855ee  |
+
+Commits de fusión (creados con `git merge --no-ff`):
+
+| Fusión     | Commit   |
+|------------|----------|
+| captura    | 0ba6414  |
+| vision     | 3a1cb92  |
+| ocr        | a2554f9  |
+| tiempo-hud | 20e0256  |
+| interfaz   | db957b4  |
+| calidad    | c6a4e52  |
+
+IMPORTANTE — regla de nombres de Git:
+  Git no permite que exista a la vez una rama `feature/lcd-ocr-live-v2` y otra
+  `feature/lcd-ocr-live-v2/captura`, porque un nombre no puede ser a la vez
+  archivo y carpeta dentro de `refs/heads`. Por eso la rama paraguas se llama
+  `integration/lcd-ocr-live-v2` y las temáticas cuelgan de
+  `feature/lcd-ocr-live-v2/...`. Si algún día creas una rama
+  `feature/lcd-ocr-live-v2` "pelada", Git te dará error mientras existan las
+  subramas; usa otro prefijo (por ejemplo `integration/...`).
+
+Las ramas temáticas son *incrementales*: cada una parte del mismo commit base
+(0f6ce3f) y añade SOLO los archivos de su área. Por eso, si te descargas solo
+`feature/lcd-ocr-live-v2/captura`, verás el esqueleto más la cámara, pero no la
+interfaz. La rama que se ejecuta completa es `integration/lcd-ocr-live-v2`.
+
+-------------------------------------------------------------------------------
+3. CÓMO SE CONSTRUYÓ (comandos reales)
+-------------------------------------------------------------------------------
+
+3.1 Clonar el repositorio
+
+    git clone https://github.com/CatLord25/captura-ocr-.git
+    cd captura-ocr
+    git log --oneline -1          # ac195cf (v1)
+
+3.2 Crear la rama paraguas desde `main`
+
+    git switch -c integration/lcd-ocr-live-v2
+    # copiar la carpeta lcd_ocr_live_v2/ al repositorio
+    git add lcd_ocr_live_v2
+    git commit -m "chore(live-v2): estructura base, configuracion y recursos del nuevo proyecto"
+    # -> 0f6ce3f
+
+3.3 Crear cada rama temática desde la paraguas
+
+    git switch -c feature/lcd-ocr-live-v2/captura integration/lcd-ocr-live-v2
+    git add lcd_ocr_live_v2/core/camara.py lcd_ocr_live_v2/core/simulador.py
+    git commit -m "feat(captura): CameraStream multi-backend, hilo sin buffer y fuentes de prueba"
+    git switch integration/lcd-ocr-live-v2
+
+    # ... y lo mismo para vision, ocr, tiempo-hud, interfaz y calidad,
+    # cada una partiendo de integration/lcd-ocr-live-v2.
+
+3.4 Integrar cada rama en la paraguas
+
+    git switch integration/lcd-ocr-live-v2
+    git merge --no-ff feature/lcd-ocr-live-v2/captura    -m "merge(captura): integra CameraStream multi-backend y fuentes de prueba"
+    git merge --no-ff feature/lcd-ocr-live-v2/vision     -m "merge(vision): integra preprocesado, segmentacion y homografia"
+    git merge --no-ff feature/lcd-ocr-live-v2/ocr        -m "merge(ocr): integra plantillas canonicas, KNN y topologia 7 segmentos"
+    git merge --no-ff feature/lcd-ocr-live-v2/tiempo-hud -m "merge(live): integra pipeline, filtro temporal, CSV, monitor y HUD"
+    git merge --no-ff feature/lcd-ocr-live-v2/interfaz   -m "merge(ui): integra las seis pestanas y los lanzadores"
+    git merge --no-ff feature/lcd-ocr-live-v2/calidad    -m "merge(calidad): integra verificacion, tests y documentacion"
+
+`--no-ff` obliga a crear un commit de fusión aunque Git pudiera avanzar rápido.
+Así en GitHub se ve claramente qué rama aportó cada bloque y se puede revertir
+una integración completa con un solo `git revert -m 1 <commit>`.
+
+3.5 Comprobar el resultado
+
+    git log --graph --oneline --all --decorate
+    git status                          # debe estar limpio
+    cd lcd_ocr_live_v2
+    python tools/verificar_instalacion.py
+    python -m unittest discover -s tests -v
+
+Resultado esperado de la verificación publicada:
+  36-37 comprobaciones OK, 0 fallos; 13 tests OK.
+
+-------------------------------------------------------------------------------
+4. CÓMO VERLO EN GITHUB
+-------------------------------------------------------------------------------
+
+- Pestaña "Code" → selector de ramas: elige
+  `integration/lcd-ocr-live-v2` para ver el proyecto completo.
+- Pestaña "Branches": verás `integration/lcd-ocr-live-v2` y las seis ramas
+  `feature/lcd-ocr-live-v2/...` agrupadas por carpeta.
+- Para revisar un área concreta:
+    https://github.com/CatLord25/captura-ocr-/compare/integration/lcd-ocr-live-v2...feature/lcd-ocr-live-v2/ocr
+  (cambia el final por captura, vision, tiempo-hud, interfaz o calidad).
+- Para comparar con el código base:
+    https://github.com/CatLord25/captura-ocr-/compare/main...integration/lcd-ocr-live-v2
+  Verás únicamente archivos NUEVOS dentro de `lcd_ocr_live_v2/`; ningún
+  archivo de la raíz aparece como modificado.
+- Pull Request opcional:
+  base: `main`  ←  compare: `integration/lcd-ocr-live-v2`
+  Ese PR solo añade la carpeta nueva; no toca el código existente.
+
+-------------------------------------------------------------------------------
+5. CÓMO TRABAJAR SI QUIERES CAMBIAR ALGO
+-------------------------------------------------------------------------------
+
+5.1 Flujo recomendado para un cambio pequeño
+
+    git fetch origin
+    git switch integration/lcd-ocr-live-v2
+    git pull origin integration/lcd-ocr-live-v2
+    # editar los archivos
+    git status
+    git diff
+    git add lcd_ocr_live_v2/...
+    git commit -m "fix(hud): corrige el color de la barra de confianza"
+    git push origin integration/lcd-ocr-live-v2
+
+5.2 Flujo con rama temática (para cambios grandes o revisables)
+
+    git switch feature/lcd-ocr-live-v2/ocr
+    # editar, por ejemplo, core/reconocimiento.py
+    git add lcd_ocr_live_v2/core/reconocimiento.py
+    git commit -m "feat(ocr): sube el peso de la topologia a 0.25"
+    git push origin feature/lcd-ocr-live-v2/ocr
+
+  Después, integra ese cambio en la paraguas:
+
+    git switch integration/lcd-ocr-live-v2
+    git merge --no-ff feature/lcd-ocr-live-v2/ocr -m "merge(ocr): integra ajuste de pesos"
+    git push origin integration/lcd-ocr-live-v2
+
+  Si el cambio es urgente y no quieres esperar, también puedes hacerlo
+  directamente sobre `integration/lcd-ocr-live-v2`; las ramas temáticas son
+  para organizar, no una obligación.
+
+5.3 Si cambias algo en `main` (código base)
+
+  `main` es solo el código v1. No lo edites para el proyecto nuevo: crea una
+  rama desde main, haz el cambio y mézclala en la paraguas:
+
+    git switch main
+    git pull origin main
+    git switch -c fix/base-algo
+    # editar
+    git commit -am "fix: ..."
+    git switch integration/lcd-ocr-live-v2
+    git merge --no-ff fix/base-algo
+
+  Ten en cuenta que un cambio en el código base de la raíz NO afecta a
+  `lcd_ocr_live_v2/` (son copias independientes), salvo que repliques el cambio
+  a mano en las dos carpetas.
+
+5.4 Mantener la rama al día con `main`
+
+    git switch integration/lcd-ocr-live-v2
+    git fetch origin
+    git merge --no-ff origin/main -m "chore: sincroniza con main"
+    # resolver conflictos si los hay, luego:
+    git add .
+    git commit
+    git push origin integration/lcd-ocr-live-v2
+
+5.5 Resolver conflictos
+
+    git status                       # archivos en "both modified"
+    # editar el archivo y dejar la versión correcta (sin marcas <<<<<<<)
+    git add archivo
+    git commit                       # termina la fusión
+    # si te equivocas:
+    git merge --abort
+
+5.6 Borrar una rama (local y remota)
+
+    git branch -d feature/lcd-ocr-live-v2/calidad          # local, si ya está fusionada
+    git push origin --delete feature/lcd-ocr-live-v2/calidad
+    git fetch --prune
+
+  NO borres `integration/lcd-ocr-live-v2` mientras quieras conservar la v2.
+
+5.7 Volver atrás
+
+    git log --oneline --graph --all        # localiza el commit
+    git revert <commit>                    # deshace un commit concreto
+    git revert -m 1 <commit_de_fusion>     # deshace una fusión completa
+    git switch -c rescate/antes-del-cambio # rama de rescate antes de tocar nada
+
+  Evita `git reset --hard` en ramas ya publicadas: reescribe el historial y
+  obliga a `push --force`. Si necesitas hacerlo en local, es tu decisión, pero
+  avisa a quien colabore.
+
+-------------------------------------------------------------------------------
+6. EJEMPLOS: DÓNDE TOCAR CADA COSA
+-------------------------------------------------------------------------------
+
+| Quieres cambiar...                            | Archivo / rama                                   |
+|-----------------------------------------------|--------------------------------------------------|
+| Exposición, brillo, ganancia, backend de cámara | `core/camara.py` y `config.py` → rama `captura`   |
+| CLAHE, umbral, puenteo morfológico              | `core/preprocesado.py` → rama `vision`            |
+| Reglas de punto/coma/menos/dígito 1             | `core/segmentacion.py` + constantes `GEOM_*` en `config.py` |
+| División de dígitos pegados                     | `core/segmentacion.py` (`_cortes_valle`, `_dividir_pegados`) |
+| Pesos de la fusión template/KNN/topología        | `config.py` → `PESOS_FUSION`, `PESOS_FUSION_UNIDAD` |
+| KNN (K, aumento de datos)                       | `core/reconocimiento.py` + `config.py`            |
+| Reglas G/B/E de siete segmentos                 | `core/siete_segmentos.py` (`REGLAS_DESEMPATE`)    |
+| Filtro temporal (N, acuerdos)                   | `core/filtro_temporal.py` + `config.py`           |
+| Unidades y roles                                | `core/instrumentos.py` + `config.py` (`ROLES`)    |
+| HUD, colores, banner, dashboard                 | `core/hud.py` + `config.py` (`HUD_*`)             |
+| Monitor/CSV en vivo                             | `core/monitor.py` + `core/log_lecturas.py`        |
+| Pestaña 6 (controles en vivo)                   | `ui/tab6_live_hud.py` → rama `interfaz`           |
+| Verificación y tests                            | `tools/verificar_instalacion.py`, `tests/` → rama `calidad` |
+| Documentación                                   | `README.md` → rama `calidad`                      |
+
+Consejo: los parámetros globales están casi todos en
+`lcd_ocr_live_v2/config.py` (cámara, OCR, HUD, CSV, geometría). Cambia ahí
+primero; si el ajuste es de un solo módulo, ve al archivo concreto.
+
+Tras cualquier cambio, ejecuta:
+
+    cd lcd_ocr_live_v2
+    python tools/verificar_instalacion.py
+    python -m unittest discover -s tests -v
+    python main_live_hud.py --fuente sintetica:termohigrobarometro
+
+La fuente sintética no necesita cámara: genera escenas con los glifos reales
+del dataset y te deja ver el HUD y el OCR al instante.
+
+-------------------------------------------------------------------------------
+7. PUBLICAR (PUSH) Y CREDENCIALES
+-------------------------------------------------------------------------------
+
+7.1 Primera vez en un PC
+
+    git config --global user.name  "CatLord25"
+    git config --global user.email "cm926263@gmail.com"
+    git config --global credential.helper manager
+
+  La primera vez que hagas `git push`, Git Credential Manager abrirá el navegador
+  para autorizar tu cuenta. GitHub ya no acepta contraseñas normales: usa el
+  gestor o un token personal (PAT) con permiso `repo`.
+
+7.2 Subir todas las ramas nuevas
+
+    git push origin integration/lcd-ocr-live-v2
+    git push origin feature/lcd-ocr-live-v2/captura
+    git push origin feature/lcd-ocr-live-v2/vision
+    git push origin feature/lcd-ocr-live-v2/ocr
+    git push origin feature/lcd-ocr-live-v2/tiempo-hud
+    git push origin feature/lcd-ocr-live-v2/interfaz
+    git push origin feature/lcd-ocr-live-v2/calidad
+
+  O en una sola línea:
+
+    git push origin integration/lcd-ocr-live-v2 feature/lcd-ocr-live-v2/captura feature/lcd-ocr-live-v2/vision feature/lcd-ocr-live-v2/ocr feature/lcd-ocr-live-v2/tiempo-hud feature/lcd-ocr-live-v2/interfaz feature/lcd-ocr-live-v2/calidad
+
+  `main` no se toca ni se sube: sigue en ac195cf.
+
+7.3 Etiqueta de versión (opcional)
+
+    git tag -a lcd-ocr-live-v2.0.0 -m "LCD OCR LIVE v2.0.0"
+    git push origin lcd-ocr-live-v2.0.0
+
+7.4 Si el push falla por credenciales
+
+  Síntomas típicos:
+    - "could not read Username for 'https://github.com'"
+    - "Authentication failed"
+    - "Support for password authentication was removed"
+
+  Soluciones:
+    1. `git config --global credential.helper manager` y volver a intentar.
+    2. Crear un PAT en GitHub → Settings → Developer settings → Personal access
+       tokens → Fine-grained tokens, con acceso al repositorio y permiso
+       "Contents: Read and write". Luego, cuando Git pida usuario/contraseña,
+       usa tu usuario y el token como contraseña.
+    3. Si usas SSH: genera una clave, añádela a GitHub y cambia el remoto:
+         ssh-keygen -t ed25519 -C "cm926263@gmail.com"
+         git remote set-url origin git@github.com:CatLord25/captura-ocr-.git
+       (No se recomienda pegar el token dentro de la URL del remoto: queda en
+       `.git/config` y en el historial de la shell.)
+
+-------------------------------------------------------------------------------
+8. SI ALGO SALE MAL
+-------------------------------------------------------------------------------
+
+- Ver el estado:            `git status`
+- Ver diferencias:          `git diff` / `git diff --staged`
+- Ver el historial:         `git log --graph --oneline --all --decorate`
+- Ver qué tocó una rama:    `git diff main...feature/lcd-ocr-live-v2/ocr --stat`
+- Deshacer un archivo:      `git restore --source=HEAD -- archivo`
+- Deshacer la última fusión: `git revert -m 1 <commit_de_fusion>`
+- Guardar trabajo a medias:  `git stash` … `git stash pop`
+- Recuperar un commit:       `git reflog` y `git switch -c rescate <hash>`
+- Recrear una rama remota:   `git fetch origin` y `git switch -c rama origin/rama`
+
+Si un experimento no funciona: crea una rama de usar y tirar
+(`git switch -c experimento/lo-que-sea`), prueba ahí y bórrala si no sirve.
+Así `integration/lcd-ocr-live-v2` queda siempre estable.
+
+-------------------------------------------------------------------------------
+9. ESTRUCTURA DEL PROYECTO NUEVO
+-------------------------------------------------------------------------------
+
+lcd_ocr_live_v2/
+├── config.py                  Parámetros de cámara, OCR, HUD y CSV
+├── main.py                    Aplicación de escritorio (6 pestañas)
+├── main_live_hud.py           HUD directo en OpenCV / headless
+├── requirements.txt
+├── assets/                    Capturas (assets/capturas está en .gitignore)
+├── data/                      rois.json, lecturas.csv, perspectiva.json
+├── datasets/                  Copia autocontenida de Balanza y termohiglobarometro
+├── docs/                      Captura de ejemplo del HUD
+├── core/                      Visión, captura, OCR, pipeline, HUD y monitor
+├── ui/                        Pestañas Tkinter
+├── tools/                     verificar_instalacion.py
+├── tests/                     test_pipeline.py (unittest)
+└── GUIA_GIT_RAMAS.txt         Este archivo
+
+Notas:
+- OpenCV 5 elimina `cv2.ml`; el proyecto usa KNN numpy como respaldo y, con
+  OpenCV 4.x, usa `cv2.ml.KNearest_create()` nativo. Ambos caminos están
+  probados.
+- Pillow es opcional: solo acelera el volcado del frame a Tkinter.
+- El motor de visión usa exclusivamente `cv2` y `numpy`.
+
+-------------------------------------------------------------------------------
+10. HISTORIAL REAL (resumen)
+-------------------------------------------------------------------------------
+
+    *   c6a4e52 merge(calidad): integra verificacion, tests y documentacion
+    |\
+    | * 8b855ee test/docs: verificacion, pruebas y documentacion del proyecto
+    * |   db957b4 merge(ui): integra las seis pestanas y los lanzadores
+    |\
+    | * 7287cd9 feat(ui): seis pestanas, dashboard en vivo y lanzadores
+    * |   20e0256 merge(live): integra pipeline, filtro temporal, CSV, monitor y HUD
+    |\
+    | * 39d4bd2 feat(live): pipeline, filtro temporal, CSV, monitor y HUD
+    * |   a2554f9 merge(ocr): integra plantillas canonicas, KNN y topologia 7 segmentos
+    |\
+    | * 4abbcfd feat(ocr): plantillas 32x48, KNN y desempate topologico A-G
+    * |   3a1cb92 merge(vision): integra preprocesado, segmentacion y homografia
+    |\
+    | * 6c0f5cf feat(vision): preprocesado CLAHE, segmentacion geometrica y homografia
+    * |   0ba6414 merge(captura): integra CameraStream multi-backend y fuentes de prueba
+    |\
+    | * de00d46 feat(captura): CameraStream multi-backend, hilo sin buffer y fuentes de prueba
+    |/
+    * 0f6ce3f chore(live-v2): estructura base, configuracion y recursos del nuevo proyecto
+    * ac195cf (main) Aplicación LCD OCR para balanza y termohigrobarómetro
+
+(El grafo exacto puede variar si añades commits; consúltalo siempre con
+`git log --graph --oneline --all --decorate`.)
+
+===============================================================================
+Fin de la guía. Si tienes dudas, abre un issue en el repositorio o revisa el
+README.md del proyecto.
+===============================================================================
