@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Capturas y datos generados en tiempo de ejecución
+assets/capturas/
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
